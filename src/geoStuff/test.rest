@@ -1,0 +1,7 @@
+POST http://localhost:3001/api
+Content-Type: application/json
+
+{
+    "latitude": 62.63919412494686, 
+    "longitude": 29.805031887871078
+}

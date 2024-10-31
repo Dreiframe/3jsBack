@@ -20,6 +20,7 @@
   "dependencies": {
     "@types/express": "^5.0.0",
     "@types/proj4": "^2.5.5",
+    "axios": "^1.7.7",
     "cors": "^2.8.5",
     "express": "^4.21.1",
     "proj4": "^2.14.0",

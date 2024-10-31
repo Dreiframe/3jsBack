@@ -5,6 +5,9 @@ const app: Express = express()
 app.use(cors())
 app.use(json());
 
+import { mmlDepth2mBBOX } from "./geoStuff/MaanMittausLaitos";
+mmlDepth2mBBOX()
+
 import { WGS84toETRS89, bboxFromETRS89 } from "./geoStuff/WGS84toETRS89";
 
 app.post('/api', (request, response) => {
