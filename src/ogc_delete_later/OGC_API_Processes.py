@@ -71,7 +71,7 @@ if __name__ == "__main__":
     from Coordinate_Converter import latlong2epsg, bbox_from_position
     east, north = latlong2epsg(62.64618981262014, 29.81811204280251)
     BoundingBox = bbox_from_position(east, north)
-    tiff_file = korkeusmalli_2m_bbox(BoundingBox, '7737f837-ab4a-4765-9727-6deaa4a80082')
+    tiff_file = korkeusmalli_2m_bbox(BoundingBox, 'does-not-work-wrong-api')
     if tiff_file is not None:
         with open('./2m_bbox/test.tif', 'wb') as file:
             file.write(tiff_file)

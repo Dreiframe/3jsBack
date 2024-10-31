@@ -1,6 +1,10 @@
 import axios from 'axios'
 const baseUrl = 'https://avoin-paikkatieto.maanmittauslaitos.fi/tiedostopalvelu/ogcproc/v1/'
 
+// INFO:
+// https://www.maanmittauslaitos.fi/paikkatiedon-tiedostopalvelu/tekninen-kuvaus
+// https://avoin-paikkatieto.maanmittauslaitos.fi/tiedostopalvelu/ogcproc/v1/processes
+
 // execution res#########################################################################################
 interface JobExecutionResponse {
     jobID: string, //"35fcbe67-32a6-4a32-accc-5cb4a3fcfad1"
@@ -50,29 +54,33 @@ interface JobResults {
 }
 
 
+export const mmlElevation2mBBOX = async (bbox: number[]) => {
+    // INFO
+    // https://www.maanmittauslaitos.fi/kartat-ja-paikkatieto/aineistot-ja-rajapinnat/tuotekuvaukset/korkeusmalli-2-m
+    // https://avoin-paikkatieto.maanmittauslaitos.fi/tiedostopalvelu/ogcproc/v1/processes/korkeusmalli_2m_bbox
 
-export const mmlDepth2mBBOX = async () => {
     const api_avain = '7737f837-ab4a-4765-9727-6deaa4a80082' // proc enw later
 
     const processUrl = baseUrl + "processes/korkeusmalli_2m_bbox/execution"
 
     // ADD VALIDATION
+    // VALIDATION HERE ##########################################################
+
+    // wait function to poll job status
     function wait(ms: number) {
         return new Promise(res => setTimeout(res, ms));
     }
 
+    // creating json to post
     const request_json = {
         id: "korkeusmalli_2m_bbox",
         inputs: {
-            boundingBoxInput: [
-                643299,
-                6948017,
-                644299,
-                6949017],
+            boundingBoxInput: bbox,
             fileFormatInput: "TIFF"
         }
     }
 
+    // Requesting maanmittausapi to start 2mbbox job process
     const executionResponse: JobExecutionResponse = await axios.post(
         processUrl,
         request_json,
@@ -83,22 +91,25 @@ export const mmlDepth2mBBOX = async () => {
     ).then(response => {
         return response.data
     }).catch(e => {
-        console.log('error:', e)
+        // console.log('error:', e)
         return undefined
     })
 
-
     if (!executionResponse){
-        console.log('MaanMittausApi execution response failure..')
+        console.log('MaanMittausApi execution failure. Job process not started. Api down?')
         return undefined
     }
 
+
+    // This is the url to the started job.
     const jobUrl = executionResponse.links[0].href
 
 
+    // Function that polls job url.
+    // Polls the api until successfull(which means the job was completed) or too many retries which throws error.
     const requestAndRetry = async () => {
-        let retries = 15
-        let timeout = 1500
+        let retries = 15 // maximum retries
+        let timeout = 1500 // waiting time in milliseconds between each poll
     
         while(retries > 0) {
             const result: JobExecutionResponse = await axios.get(
@@ -110,12 +121,12 @@ export const mmlDepth2mBBOX = async () => {
             ).then(response => {
                 return response.data
             }).catch(e => {
-                console.log('error:', e)
-                retries = 0
+                //console.log('error:', e)
+                retries = 0 // set retries to 0 to exit loop because error duh
                 throw new Error('MaanMittausApi job response failure..')
             })
 
-            console.log(result.status)
+            console.log('Status:', result.status)  // delete later
 
             if (result.status == 'successful'){
                 return result
@@ -129,17 +140,20 @@ export const mmlDepth2mBBOX = async () => {
     }
 
 
-    let jobResutsUrl
+    // polling maanmittauslaitus job until status is succesful.
+    // if successful set jobResultUrl to be url path for job results
+    let jobResultsUrl
     try{
         const finalExecutionResponse: JobExecutionResponse = await requestAndRetry()
-        jobResutsUrl = finalExecutionResponse.links[0].href
+        jobResultsUrl = finalExecutionResponse.links[0].href
     } catch (e){
         console.log('error:', e)
         return undefined
     }
 
+    // get job results from maanmittauslaitos.
     const successResponse: JobSuccessfulResponse = await axios.get(
-        jobResutsUrl,
+        jobResultsUrl,
         {auth: {
             username: api_avain,
             password: ''
@@ -152,5 +166,8 @@ export const mmlDepth2mBBOX = async () => {
     })
 
     console.log(successResponse.results[0].path)
+
+    // returning url path to depthmap/elevation.tif file.
+    // example: https://avoin-paikkatieto.maanmittauslaitos.fi/tiedostopalvelu/dl/v1/uuid-jobid/korkeusmalli_2m.tif
     return successResponse.results[0].path
 }
